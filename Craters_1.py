@@ -23,97 +23,77 @@ import numpy
 
 from PIL import Image
 
-#Pixel Per Degree
-ppd=128
-#Kilometer per Pixel
-kmpx=0.2369011752
-#Pixel Per Kilometer
-pxkm=kmpx**-1
-#Kilometer per Degree
-kmd=ppd*kmpx
-#Degrees per Kilometer
-dkm=kmd**-1
+import os
+
+from numpy import nan
+#Gravity Map Resolution Information
+#PixelsPerDegree (For image data)
+ppd=16
+#kilometers per pixel(For image data) You need at least 2 kilometers
+kmpix=1.895
+#Kilometers per degree
+kmdeg=ppd*kmpix
+#Degrees per kilometer
+dkm=kmdeg**(-1)
+
 #DEM
 #Run this to get all the files in place
 #%% 
 print('Reading files')
-Moon=rasterio.open("D:/Academics/OSU/Moon Related Projects/Global/SLDEM2015_128_60S_60N_000_360.JP2")
+#Craters Shapefile
+Shape=gpd.read_file("F:\Academics/OSU/Moon Related Projects/Crater Detection Project/Lunar Crater Database/Robbins database USGS 2018/Catalog_Moon_Release_20180815_shapefile180/Catalog_Moon_Release_20180815_1kmPlus_180.shp")
+#Elevation Map
+Moon="F:/Academics/OSU/Moon Related Projects/Global/SLDEM2015_256_60S_60N_000_360.JP2"
 #Gravity disturbance
-MoonGrav=rasterio.open("D:/Academics/OSU/Moon Related Projects/gggrx_1200a_dist_l1200.tif")
-#PixelsPerDegree (For image data)
-gppd=16
-#kilometers per pixel(For image data) You need at least 2 kilometers
-gkmpix=1895/1000
-#Kilometers per degree
-gkmdeg=gppd*gkmpix
-#Degrees per kilometer
-gdkm=gkmdeg**(-1)
-
-#Crater Database
-Robbins=pd.read_excel('D:/Academics/OSU/Moon Related Projects/Crater Detection Project/Lunar Crater Database/Robbins database USGS 2018/Lunar Crater Database Robbins 2018.xlsx')
+MoonGrav="F:/Academics/OSU/Moon Related Projects/gggrx_1200a_dist_l1200.tif"
 print('Finshed files. Extracting WKT')
+
 #DEM Well Known Text
-WKT=Moon.crs
-WKT1=MoonGrav.crs
+WKT=rasterio.open(MoonGrav).crs
 
 #%%
-print('Creating GDF and buffer zones')
-#Lon circi IMG has range 0 to 360. Alter this to -180 to 180 by subtracting 360 from anything larger than 180*
-#Subtract 360 from every Longitude value greater than 180
-Longe=[]
-for index, row in Robbins.iterrows():
-    if row['LON_CIRC_IMG']>180:
-        Longe.append(row['LON_CIRC_IMG']-360)
-    else:
-        Longe.append(row['LON_CIRC_IMG'])
-#Create GeoDataFrame        
-Craters=gpd.GeoDataFrame(Robbins, geometry= gpd.points_from_xy(Longe-(Robbins['DIAM_CIRC_IMG']/2)*dkm,Robbins['LAT_CIRC_IMG']-(Robbins['DIAM_CIRC_IMG']/2)*dkm), crs=WKT)
-#Create Buffer zones around crater centers. Radius is expected in degrees. 
-Craters['Shapes'] = Craters.buffer((Robbins['DIAM_CIRC_IMG']/2)*dkm)
-Craters['Radius']=Robbins['DIAM_CIRC_IMG']/2
+print('Creating GDF and buffer zones')       
+#Populate existing Data Frame with Radius(in degrees) and Bounding polygon for each crater
+Shape['Radius']=Shape['DIAM_C_IM']/2
+Shape['Shapes']=Shape['geometry'].buffer(Shape['Radius'])
 #Remove unwanted data from variable
-Craters=Craters.drop(['LAT_CIRC_IMG',	'LON_CIRC_IMG',	'LAT_ELLI_IMG',	'LON_ELLI_IMG',	'DIAM_CIRC_IMG',	'DIAM_CIRC_SD_IMG',	'DIAM_ELLI_MAJOR_IMG',	'DIAM_ELLI_MINOR_IMG',	'DIAM_ELLI_ECCEN_IMG',	'DIAM_ELLI_ELLIP_IMG',	'DIAM_ELLI_ANGLE_IMG',	'LAT_ELLI_SD_IMG',	'LON_ELLI_SD_IMG',	'DIAM_ELLI_MAJOR_SD_IMG',	'DIAM_ELLI_MINOR_SD_IMG',	'DIAM_ELLI_ANGLE_SD_IMG',	'DIAM_ELLI_ECCEN_SD_IMG',	'DIAM_ELLI_ELLIP_SD_IMG',	'ARC_IMG',	'PTS_RIM_IMG'],axis=1)
-print('Defining bounding region')
-#Limiting area from where craters are obtained. 
-CenterPoint=(24,-144)
-Area=20
-MinLat=CenterPoint[0]-Area
-MaxLat=CenterPoint[0]+Area
-MinLong=CenterPoint[1]-Area
-MaxLong=CenterPoint[1]+Area
-print('Creating Polygon')
-BoundingBox=Polygon(((MinLong,MinLat),(MaxLong,MinLat),(MaxLong,MaxLat),(MinLong,MaxLat)))
+Shape=Shape.drop(columns=Shape.iloc[:,1:17])
 
 #%%
 print('Moving into loop')
-#Append these for every crater you find inside, or outside of the given region
-Coordinates=[]
-Outside=[]
-#Obtain all craters in desired area with an area of 5 kilometers or more
-for index, row in Craters.head(550).iterrows():
-    with rasterio.open("D:/Academics/OSU/Moon Related Projects/gggrx_1200a_dist_l1200.tif") as src:
-        if row['Radius']>10:
-            #if BoundingBox.contains(row['Shapes'])==True:
-                    #Making sure this is empty just in case
-                    im=[]
-                    out_image, out_transform = rasterio.mask.mask(src,[row['Shapes']], crop=True)
-                    #Append the coordinate and index inside polygon
-                    Coordinates.append([index,row['CRATER_ID'],row['geometry']])
-                    #Remove first dimension
-                    im=numpy.squeeze(out_image)
-                    #Create plot
-                    plt.imshow(im, cmap='viridis')
-                    plt.title(row['CRATER_ID'])
-                    #Show plot
-                    plt.show()
+#Obtain all craters in desired area with a radius of 10 kilometers or more
+for index, row in Shape.head(5).iterrows():
+    with rasterio.open(MoonGrav) as src:
+        with rasterio.open(Moon) as src1:
+            #if row['Radius']>10:
+                #Making sure this is empty just in case
+                im=[]
+                out_image, out_transform = rasterio.mask.mask(src,[row['Shapes']], crop=True)
+                MinLat=row['Shapes'].bounds[1]
+                MaxLat=row['Shapes'].bounds[3]
+                MinLong=row['Shapes'].bounds[0]
+                MaxLong=row['Shapes'].bounds[2]
+                BoundingBox=Polygon(((MinLong,MinLat),(MaxLong,MinLat),(MaxLong,MaxLat),(MinLong,MaxLat)))
+                out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
+                #Remove first dimension
+                im=numpy.squeeze(out_image)
+                im[im==-32767]=0
+                im1=numpy.squeeze(out_image1)
+                im1[im1==-32767]=0
+                #Create plot GRAVITY
+                plt.imshow(im, cmap='viridis')
+                plt.title(row['CRATER_ID'])
+                #Show plot
+                plt.show()
+
+                #Create plot Crater
+                plt.imshow(im1, cmap='gist_gray')
+                plt.title(row['CRATER_ID'])
+                #Show plot
+                plt.show()                    
                     #Save as GeoTiff
-                    out_meta=src.meta
-                    profile=src.profile
-                    profile["height"]=out_image.shape[1]
-                    profile["width"]=out_image.shape[2]
-                    profile["transform"]=out_transform
-                    #with rasterio.open(row['CRATER_ID'],"w",**profile) as dest:
-                        #dest.write(out_image)
-            #else:
-                    Outside.append([index,row['CRATER_ID'], row['geometry']])
+                    #output_dir="F:/Academics/OSU/Moon Related Projects/CraterImages"
+                    #filename=os.path.join(output_dir,f"{row['CRATER_ID']}.tif")
+                    #with rasterio.open(filename, "w",**src.profile) as dest:
+                     #   dest.write(out_image)
 print('Exit loop')
