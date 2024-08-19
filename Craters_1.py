@@ -40,7 +40,7 @@ dkm=kmdeg**(-1)
 #Run this to get all the files in place
 #%% 
 print('Reading files')
-#Craters Shapefile
+#Craters Shapefile (This was created from the Robbins 2018 Database) 
 Shape=gpd.read_file("F:\Academics/OSU/Moon Related Projects/Crater Detection Project/Lunar Crater Database/Robbins database USGS 2018/Catalog_Moon_Release_20180815_shapefile180/Catalog_Moon_Release_20180815_1kmPlus_180.shp")
 #Elevation Map
 Moon="F:/Academics/OSU/Moon Related Projects/Global/SLDEM2015_256_60S_60N_000_360.JP2"
@@ -58,6 +58,12 @@ Shape['Radius']=Shape['DIAM_C_IM']/2
 Shape['Shapes']=Shape['geometry'].buffer(Shape['Radius'])
 #Remove unwanted data from variable
 Shape=Shape.drop(columns=Shape.iloc[:,1:17])
+#Create a Polygon that will be the Area of Interest to acquire craters
+MinLat=-20
+MaxLat=20
+MinLong=3
+MaxLong=23 
+AoI=Polygon(((MinLong,MinLat),(MaxLong,MinLat),(MaxLong,MaxLat),(MinLong,MaxLat)))
 
 #%%
 print('Moving into loop')
@@ -65,14 +71,15 @@ print('Moving into loop')
 for index, row in Shape.head(5).iterrows():
     with rasterio.open(MoonGrav) as src:
         with rasterio.open(Moon) as src1:
-            #if row['Radius']>10:
+            #Compare Shape with AoI defined above. If it's contained within then move into the loop.
+            if AoI.contains(row['Shapes'])
                 #Making sure this is empty just in case
                 im=[]
                 out_image, out_transform = rasterio.mask.mask(src,[row['Shapes']], crop=True)
                 MinLat=row['Shapes'].bounds[1]
                 MaxLat=row['Shapes'].bounds[3]
                 MinLong=row['Shapes'].bounds[0]
-                MaxLong=row['Shapes'].bounds[2]
+                MaxLong=row['Shapes'].bounds[2] 
                 BoundingBox=Polygon(((MinLong,MinLat),(MaxLong,MinLat),(MaxLong,MaxLat),(MinLong,MaxLat)))
                 out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
                 #Remove first dimension
