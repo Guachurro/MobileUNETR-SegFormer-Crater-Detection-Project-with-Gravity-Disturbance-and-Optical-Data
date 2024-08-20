@@ -55,6 +55,7 @@ WKT=rasterio.open(MoonGrav).crs
 print('Creating GDF and buffer zones')       
 #Populate existing Data Frame with Radius(in degrees) and Bounding polygon for each crater
 Shape['Radius']=Shape['DIAM_C_IM']/2
+#Is this command assuming a plane rather than take into account the current crs? 
 Shape['Shapes']=Shape['geometry'].buffer(Shape['Radius'])
 #Remove unwanted data from variable
 Shape=Shape.drop(columns=Shape.iloc[:,1:17])
