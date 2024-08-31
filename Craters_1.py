@@ -149,7 +149,7 @@ with rasterio.open(filename, "w",**meta) as dest:
 #This block will generat ethe images and labels of craters given a GeoDataFrame
 print('Moving into loop')
 #Obtain all craters in desired area with a radius of 10 kilometers or more
-for index, row in Shape.head(5).iterrows():
+for index, row in Shape.iterrows():
     with rasterio.open(MoonGrav) as src:
         with rasterio.open(GravClip) as src1:
             ####Boundaries of the polygon containing the crater
@@ -182,7 +182,6 @@ for index, row in Shape.head(5).iterrows():
                          "height":out_image.shape[1],
                          "width":out_image.shape[2],
                          "transform":out_transform})
-            print(meta)
             filename=os.path.join(CraterOut+CraterID)
             with rasterio.open(filename, "w",**meta) as dest:
                 dest.write(out_image)
@@ -191,12 +190,13 @@ for index, row in Shape.head(5).iterrows():
             ####This output is the cropping of the Label. 
             out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
             out_image1[out_image1!=-32767]=1
+            out_image1[out_image1==-32767]=0
             meta1=src1.profile
             meta1.update({"driver":src1.driver,
                         "height":out_image1.shape[1],
                         "width":out_image1.shape[2],
                         "transform":out_transform1})
-            print(meta1)            
+
             filename=os.path.join(LabelOut+"/Individual Labels/"+CraterID)
             with rasterio.open(filename, "w",**meta1) as dest:
                 dest.write(out_image1)
