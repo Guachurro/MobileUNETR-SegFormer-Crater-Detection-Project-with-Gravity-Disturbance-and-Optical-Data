@@ -29,8 +29,6 @@ import random
 
 #import cartopy.crs as ccrs
 
-import numpy
-
 from PIL import Image
 
 import os
@@ -56,12 +54,10 @@ Moon="F:/Academics/OSU/Thesis Documents/Lunar DEMs/SLDEM2015_256_60S_60N_000_360
 MoonGrav="F:/Academics/OSU/Thesis Documents/Lunar Gravity Maps/gggrx_1200a_dist_l1200.tif"
 
 ###Output Place for file generation
-#This one stores the labels for Crater images
-LabelOut="F:/Academics/OSU/Thesis Documents/Generated Images/Labels/"
-#This stores the crater image clips as taken from Gravity Map without altering pixel values. 
-CraterOut="F:/Academics/OSU/Thesis Documents/Generated Images/Crater Gravity Images/"
+#Root folder where I will store images and labels 
+Output="F:/Academics/OSU/Thesis Documents/Images and Labels/"
 #This is the label image
-GravClip="F:/Academics/OSU/Thesis Documents/Generated Images/Labels/AoI/0N_13E_5kR_Craters.tif"
+GravClip="F:/Academics/OSU/Thesis Documents/Images and Labels/0N_13E_5kR_Craters.tif"
 
 
 #Run this to get all the files in place
@@ -146,9 +142,12 @@ with rasterio.open(filename, "w",**meta) as dest:
     dest.write(out_image)
 
 #%%
-#This block will generat ethe images and labels of craters given a GeoDataFrame
-print('Moving into loop')
+#This block will generat ethe images and labels of craters given a GeoDataFrame without performing inflation techniques. 
+print('Moving into loop without inflatiion')
+Technique='Bare/'
+Additional='_Bare'
 #Obtain all craters in desired area with a radius of 10 kilometers or more
+#Take a centered image first. 
 for index, row in Shape.iterrows():
     with rasterio.open(MoonGrav) as src:
         with rasterio.open(GravClip) as src1:
@@ -157,7 +156,57 @@ for index, row in Shape.iterrows():
             MaxLat=row['Boundaries'].bounds[3]
             MinLong=row['Boundaries'].bounds[0]
             MaxLong=row['Boundaries'].bounds[2]
-            CraterID=row['CRATER_ID']+'.tif'
+            CraterID=row['CRATER_ID']+Additional
+
+            ####Create a bounding box that has been offset from the Crater in some direction. 
+            BoundingBox=Polygon(((MinLong,MinLat),(MaxLong,MinLat),(MaxLong,MaxLat),(MinLong,MaxLat)))
+            
+            ####This output is the cropping of the Gravity Data.
+            out_image, out_transform = rasterio.mask.mask(src,[BoundingBox], crop=True)
+            meta=src.profile
+            meta.update({"driver":src.driver,
+                         "height":out_image.shape[1],
+                         "width":out_image.shape[2],
+                         "transform":out_transform})
+            filename=os.path.join(Output+Technique+CraterID+'.tif')
+            with rasterio.open(filename, "w",**meta) as dest:
+                dest.write(out_image)
+            
+            
+            ####This output is the cropping of the Label. 
+            out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
+            out_image1[out_image1!=-32767]=1
+            out_image1[out_image1==-32767]=0
+            meta1=src1.profile
+            meta1.update({"driver":src1.driver,
+                        "height":out_image1.shape[1],
+                        "width":out_image1.shape[2],
+                        "transform":out_transform1})
+
+            filename=os.path.join(Output+Technique+CraterID+'_Label'+'.tif')
+            with rasterio.open(filename, "w",**meta1) as dest:
+                dest.write(out_image1)
+                
+            #print('Crater done')
+print('Exit loop')
+
+
+#%%
+#This block will generat ethe images and labels of craters given a GeoDataFrame without performing inflation techniques. 
+print('Moving into loop with translation')
+Technique='Translation/'
+Additional='_Translation'
+#Obtain all craters in desired area with a radius of 10 kilometers or more
+#Take a centered image first. 
+for index, row in Shape.iterrows():
+    with rasterio.open(MoonGrav) as src:
+        with rasterio.open(GravClip) as src1:
+            ####Boundaries of the polygon containing the crater
+            MinLat=row['Boundaries'].bounds[1]
+            MaxLat=row['Boundaries'].bounds[3]
+            MinLong=row['Boundaries'].bounds[0]
+            MaxLong=row['Boundaries'].bounds[2]
+            CraterID=row['CRATER_ID']+Additional
             
             ####Lat/Long Offset by calculating their total extent and dividing it by 2. That number is then used to shift the window by applying a random percentage from 1 to 100
             # (Max - Min)/2 gets us half of the total window span in degrees
@@ -166,6 +215,7 @@ for index, row in Shape.iterrows():
             LatOffset=((MaxLat-MinLat)/2)*(random.randint(1,100)/100)*((-1)**random.randint(1,2))
             LonOffset=((MaxLong-MinLong)/2)*(random.randint(1,100)/100)*((-1)**random.randint(1,2))
                 
+            
             # Min and Max values are both offset by the same ammount to maintain the same original window size. 
             Minlat=MinLat+LatOffset
             MaxLat=MaxLat+LatOffset
@@ -182,7 +232,7 @@ for index, row in Shape.iterrows():
                          "height":out_image.shape[1],
                          "width":out_image.shape[2],
                          "transform":out_transform})
-            filename=os.path.join(CraterOut+CraterID)
+            filename=os.path.join(Output+Technique+CraterID+'.tif')
             with rasterio.open(filename, "w",**meta) as dest:
                 dest.write(out_image)
             
@@ -197,10 +247,142 @@ for index, row in Shape.iterrows():
                         "width":out_image1.shape[2],
                         "transform":out_transform1})
 
-            filename=os.path.join(LabelOut+"/Individual Labels/"+CraterID)
+            filename=os.path.join(Output+Technique+CraterID+'_Label'+'.tif')
             with rasterio.open(filename, "w",**meta1) as dest:
                 dest.write(out_image1)
                 
-            print('Crater done')
+            #print('Crater done')
 print('Exit loop')
 
+#%%
+#This block will generat ethe images and labels of craters given a GeoDataFrame without performing inflation techniques. 
+print('Moving into loop with translation and horizontal flip')
+Technique='Translation_FlipH/'
+Additional='_Translation_FlipH'
+#Obtain all craters in desired area with a radius of 10 kilometers or more
+#Take a centered image first. 
+for index, row in Shape.iterrows():
+    with rasterio.open(MoonGrav) as src:
+        with rasterio.open(GravClip) as src1:
+            ####Boundaries of the polygon containing the crater
+            MinLat=row['Boundaries'].bounds[1]
+            MaxLat=row['Boundaries'].bounds[3]
+            MinLong=row['Boundaries'].bounds[0]
+            MaxLong=row['Boundaries'].bounds[2]
+            CraterID=row['CRATER_ID']+Additional
+            
+            ####Lat/Long Offset by calculating their total extent and dividing it by 2. That number is then used to shift the window by applying a random percentage from 1 to 100
+            # (Max - Min)/2 gets us half of the total window span in degrees
+            # (random.randint(1,100)/100) Generates a random Integer from 1 to 100 that is turned into a percentage. This is multiplies by the window span to know how much we're moving from target center.
+            # ((-1)**random.randint(1,100)) Will determine a positive or negative value that will determine whether the shift is positive or negative
+            LatOffset=((MaxLat-MinLat)/2)*(random.randint(1,100)/100)*((-1)**random.randint(1,2))
+            LonOffset=((MaxLong-MinLong)/2)*(random.randint(1,100)/100)*((-1)**random.randint(1,2))
+                
+            
+            # Min and Max values are both offset by the same ammount to maintain the same original window size. 
+            Minlat=MinLat+LatOffset
+            MaxLat=MaxLat+LatOffset
+            MinLong=MinLong+LonOffset
+            MaxLong=MaxLong+LonOffset
+            
+            ####Create a bounding box that has been offset from the Crater in some direction. 
+            BoundingBox=Polygon(((MinLong,MinLat),(MaxLong,MinLat),(MaxLong,MaxLat),(MinLong,MaxLat)))
+            
+            ####This output is the cropping of te Gravity Data.
+            out_image, out_transform = rasterio.mask.mask(src,[BoundingBox], crop=True)
+            out_image=numpy.fliplr(out_image)
+            meta=src.profile
+            meta.update({"driver":src.driver,
+                         "height":out_image.shape[1],
+                         "width":out_image.shape[2],
+                         "transform":out_transform})
+            filename=os.path.join(Output+Technique+CraterID+'.tif')
+            with rasterio.open(filename, "w",**meta) as dest:
+                dest.write(out_image)
+            
+            
+            ####This output is the cropping of the Label. 
+            out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
+            out_image1=numpy.fliplr(out_image1)
+            out_image1[out_image1!=-32767]=1
+            out_image1[out_image1==-32767]=0
+            meta1=src1.profile
+            meta1.update({"driver":src1.driver,
+                        "height":out_image1.shape[1],
+                        "width":out_image1.shape[2],
+                        "transform":out_transform1})
+
+            filename=os.path.join(Output+Technique+CraterID+'_Label'+'.tif')
+            with rasterio.open(filename, "w",**meta1) as dest:
+                dest.write(out_image1)
+                
+            #print('Crater done')
+print('Exit loop')
+#%%
+#This block will generat ethe images and labels of craters given a GeoDataFrame without performing inflation techniques. 
+print('Moving into loop with Gaussian Noise')
+Technique='Translation_GNoise/'
+Additional='_Translation_GNoise'
+#Obtain all craters in desired area with a radius of 10 kilometers or more
+#Take a centered image first. 
+for index, row in Shape.iterrows():
+    with rasterio.open(MoonGrav) as src:
+        with rasterio.open(GravClip) as src1:
+            ####Boundaries of the polygon containing the crater
+            MinLat=row['Boundaries'].bounds[1]
+            MaxLat=row['Boundaries'].bounds[3]
+            MinLong=row['Boundaries'].bounds[0]
+            MaxLong=row['Boundaries'].bounds[2]
+            CraterID=row['CRATER_ID']+Additional
+            numpy.random.seed(30)
+            
+            
+            ####Lat/Long Offset by calculating their total extent and dividing it by 2. That number is then used to shift the window by applying a random percentage from 1 to 100
+            # (Max - Min)/2 gets us half of the total window span in degrees
+            # (random.randint(1,100)/100) Generates a random Integer from 1 to 100 that is turned into a percentage. This is multiplies by the window span to know how much we're moving from target center.
+            # ((-1)**random.randint(1,100)) Will determine a positive or negative value that will determine whether the shift is positive or negative
+            LatOffset=((MaxLat-MinLat)/2)*(random.randint(1,100)/100)*((-1)**random.randint(1,2))
+            LonOffset=((MaxLong-MinLong)/2)*(random.randint(1,100)/100)*((-1)**random.randint(1,2))
+                
+            
+            # Min and Max values are both offset by the same ammount to maintain the same original window size. 
+            Minlat=MinLat+LatOffset
+            MaxLat=MaxLat+LatOffset
+            MinLong=MinLong+LonOffset
+            MaxLong=MaxLong+LonOffset
+            
+            ####Create a bounding box that has been offset from the Crater in some direction. 
+            BoundingBox=Polygon(((MinLong,MinLat),(MaxLong,MinLat),(MaxLong,MaxLat),(MinLong,MaxLat)))
+            
+            ####This output is the cropping of te Gravity Data.
+            out_image, out_transform = rasterio.mask.mask(src,[BoundingBox], crop=True)
+            
+            #Prepare noise for Data
+            Noise=numpy.random.normal(loc=0,scale=1,size=(out_image.shape[0],out_image.shape[1],out_image.shape[2]))
+            out_image=out_image+Noise
+            meta=src.profile
+            meta.update({"driver":src.driver,
+                         "height":out_image.shape[1],
+                         "width":out_image.shape[2],
+                         "transform":out_transform})
+            filename=os.path.join(Output+Technique+CraterID+'.tif')
+            with rasterio.open(filename, "w",**meta) as dest:
+                dest.write(out_image)
+            
+            
+            ####This output is the cropping of the Label. The label also doesn't require any noise or alterations so long as you didn't flip the dataset. 
+            out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
+            out_image1[out_image1!=-32767]=1
+            out_image1[out_image1==-32767]=0
+            meta1=src1.profile
+            meta1.update({"driver":src1.driver,
+                        "height":out_image1.shape[1],
+                        "width":out_image1.shape[2],
+                        "transform":out_transform1})
+
+            filename=os.path.join(Output+Technique+CraterID+'_Label'+'.tif')
+            with rasterio.open(filename, "w",**meta1) as dest:
+                dest.write(out_image1)
+                
+            #print('Crater done')
+print('Exit loop')
