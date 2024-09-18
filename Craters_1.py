@@ -21,19 +21,27 @@ from rasterio.windows import Window
 
 import numpy
 
-import pyproj
+#import pyproj
 
-from pyproj import Geod
+#from pyproj import Geod
 
 import random
-
-#import cartopy.crs as ccrs
 
 from PIL import Image
 
 import os
 
 from numpy import nan
+
+
+def interpolate_pixel(data, mask):
+    for i in range(1, data.shape[0] - 1):
+        for j in range(1, data.shape[1] - 1):
+            if mask[i, j]:
+                neighbors = data[i-1:i+2, j-1:j+2]
+                data[i, j] = numpy.mean(neighbors[neighbors != -32676])
+        return data
+
 #Gravity Map Resolution Information
 #PixelsPerDegree (For image data)
 ppd=16
@@ -90,7 +98,7 @@ if k==1:
     for index, row in Shape.iterrows():
         if AoI.contains(Shape['geometry'][index]) :
             #If its contained you're good. Added value for debugging
-            print(Shape['geometry'][index])
+            k='nothing'
         else:#Add the index value to a list so we can drop them all later from the Geodataframe
             list.append(index)
 
@@ -132,19 +140,19 @@ meta=TIF.profile
 meta.update({"driver":TIF.driver,
              "height":out_image.shape[1],
              "width":out_image.shape[2],
+             "count":out_image.shape[0],
              "transform":out_transform})
 #%%
 print('Saving Clip')
 #Save as GeoTiff
-output_dir=LabelOut
-filename=os.path.join(output_dir+"/AoI/"+"0N_13E_5kR_Craters.tif")
+output_dir=Output
+filename=os.path.join(Output+"0N_13E_5kR_Craters.tif")
 with rasterio.open(filename, "w",**meta) as dest:
     dest.write(out_image)
 
 #%%
 #This block will generat ethe images and labels of craters given a GeoDataFrame without performing inflation techniques. 
 print('Moving into loop without inflatiion')
-Technique='Bare/'
 Additional='_Bare'
 #Obtain all craters in desired area with a radius of 10 kilometers or more
 #Take a centered image first. 
@@ -163,27 +171,34 @@ for index, row in Shape.iterrows():
             
             ####This output is the cropping of the Gravity Data.
             out_image, out_transform = rasterio.mask.mask(src,[BoundingBox], crop=True)
+            out_image[out_image==-32767]=0
             meta=src.profile
             meta.update({"driver":src.driver,
                          "height":out_image.shape[1],
                          "width":out_image.shape[2],
+                         "count":out_image.shape[0],
                          "transform":out_transform})
-            filename=os.path.join(Output+Technique+CraterID+'.tif')
+            
+            
+            filename=os.path.join(Output+'Image/'+CraterID+'.tif')
             with rasterio.open(filename, "w",**meta) as dest:
                 dest.write(out_image)
             
             
             ####This output is the cropping of the Label. 
             out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
+            #out_image1= numpy.expand_dims(out_image1, axis=-1)
             out_image1[out_image1!=-32767]=1
             out_image1[out_image1==-32767]=0
             meta1=src1.profile
             meta1.update({"driver":src1.driver,
                         "height":out_image1.shape[1],
                         "width":out_image1.shape[2],
+                        "count":out_image1.shape[0],
                         "transform":out_transform1})
 
-            filename=os.path.join(Output+Technique+CraterID+'_Label'+'.tif')
+            #out_image1 = numpy.expand_dims(out_image1, axis=-1)
+            filename=os.path.join(Output+'Label/'+CraterID+'_Label'+'.tif')
             with rasterio.open(filename, "w",**meta1) as dest:
                 dest.write(out_image1)
                 
@@ -194,7 +209,6 @@ print('Exit loop')
 #%%
 #This block will generat ethe images and labels of craters given a GeoDataFrame without performing inflation techniques. 
 print('Moving into loop with translation')
-Technique='Translation/'
 Additional='_Translation'
 #Obtain all craters in desired area with a radius of 10 kilometers or more
 #Take a centered image first. 
@@ -227,27 +241,31 @@ for index, row in Shape.iterrows():
             
             ####This output is the cropping of te Gravity Data.
             out_image, out_transform = rasterio.mask.mask(src,[BoundingBox], crop=True)
+            out_image[out_image==-32767]=0
             meta=src.profile
             meta.update({"driver":src.driver,
                          "height":out_image.shape[1],
                          "width":out_image.shape[2],
+                         "count":out_image.shape[0],
                          "transform":out_transform})
-            filename=os.path.join(Output+Technique+CraterID+'.tif')
+            filename=os.path.join(Output+'Image/'+CraterID+'.tif')
             with rasterio.open(filename, "w",**meta) as dest:
                 dest.write(out_image)
             
             
             ####This output is the cropping of the Label. 
             out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
+            #out_image1= numpy.expand_dims(out_image1, axis=-1)
             out_image1[out_image1!=-32767]=1
             out_image1[out_image1==-32767]=0
             meta1=src1.profile
             meta1.update({"driver":src1.driver,
                         "height":out_image1.shape[1],
                         "width":out_image1.shape[2],
+                        "count":out_image1.shape[0],
                         "transform":out_transform1})
 
-            filename=os.path.join(Output+Technique+CraterID+'_Label'+'.tif')
+            filename=os.path.join(Output+'Label/'+CraterID+'_Label'+'.tif')
             with rasterio.open(filename, "w",**meta1) as dest:
                 dest.write(out_image1)
                 
@@ -257,7 +275,6 @@ print('Exit loop')
 #%%
 #This block will generat ethe images and labels of craters given a GeoDataFrame without performing inflation techniques. 
 print('Moving into loop with translation and horizontal flip')
-Technique='Translation_FlipH/'
 Additional='_Translation_FlipH'
 #Obtain all craters in desired area with a radius of 10 kilometers or more
 #Take a centered image first. 
@@ -290,19 +307,22 @@ for index, row in Shape.iterrows():
             
             ####This output is the cropping of te Gravity Data.
             out_image, out_transform = rasterio.mask.mask(src,[BoundingBox], crop=True)
+            out_image[out_image==-32767]=0
             out_image=numpy.fliplr(out_image)
             meta=src.profile
             meta.update({"driver":src.driver,
                          "height":out_image.shape[1],
                          "width":out_image.shape[2],
+                         "count":out_image.shape[0],
                          "transform":out_transform})
-            filename=os.path.join(Output+Technique+CraterID+'.tif')
+            filename=os.path.join(Output+'Image/'+CraterID+'.tif')
             with rasterio.open(filename, "w",**meta) as dest:
                 dest.write(out_image)
             
             
             ####This output is the cropping of the Label. 
             out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
+
             out_image1=numpy.fliplr(out_image1)
             out_image1[out_image1!=-32767]=1
             out_image1[out_image1==-32767]=0
@@ -310,9 +330,10 @@ for index, row in Shape.iterrows():
             meta1.update({"driver":src1.driver,
                         "height":out_image1.shape[1],
                         "width":out_image1.shape[2],
+                        "count":out_image1.shape[0],
                         "transform":out_transform1})
 
-            filename=os.path.join(Output+Technique+CraterID+'_Label'+'.tif')
+            filename=os.path.join(Output+'Label/'+CraterID+'_Label'+'.tif')
             with rasterio.open(filename, "w",**meta1) as dest:
                 dest.write(out_image1)
                 
@@ -321,7 +342,6 @@ print('Exit loop')
 #%%
 #This block will generat ethe images and labels of craters given a GeoDataFrame without performing inflation techniques. 
 print('Moving into loop with Gaussian Noise')
-Technique='Translation_GNoise/'
 Additional='_Translation_GNoise'
 #Obtain all craters in desired area with a radius of 10 kilometers or more
 #Take a centered image first. 
@@ -356,31 +376,35 @@ for index, row in Shape.iterrows():
             
             ####This output is the cropping of te Gravity Data.
             out_image, out_transform = rasterio.mask.mask(src,[BoundingBox], crop=True)
-            
+            out_image[out_image==-32767]=0
             #Prepare noise for Data
             Noise=numpy.random.normal(loc=0,scale=1,size=(out_image.shape[0],out_image.shape[1],out_image.shape[2]))
+
             out_image=out_image+Noise
             meta=src.profile
             meta.update({"driver":src.driver,
                          "height":out_image.shape[1],
                          "width":out_image.shape[2],
+                         "count":out_image.shape[0],
                          "transform":out_transform})
-            filename=os.path.join(Output+Technique+CraterID+'.tif')
+            filename=os.path.join(Output+'Image/'+CraterID+'.tif')
             with rasterio.open(filename, "w",**meta) as dest:
                 dest.write(out_image)
             
             
             ####This output is the cropping of the Label. The label also doesn't require any noise or alterations so long as you didn't flip the dataset. 
             out_image1, out_transform1 = rasterio.mask.mask(src1,[BoundingBox], crop=True)
+            #out_image1= numpy.expand_dims(out_image1, axis=-1)
             out_image1[out_image1!=-32767]=1
             out_image1[out_image1==-32767]=0
             meta1=src1.profile
             meta1.update({"driver":src1.driver,
                         "height":out_image1.shape[1],
                         "width":out_image1.shape[2],
+                        "count":out_image1.shape[0],
                         "transform":out_transform1})
 
-            filename=os.path.join(Output+Technique+CraterID+'_Label'+'.tif')
+            filename=os.path.join(Output+'Label/'+CraterID+'_Label'+'.tif')
             with rasterio.open(filename, "w",**meta1) as dest:
                 dest.write(out_image1)
                 
