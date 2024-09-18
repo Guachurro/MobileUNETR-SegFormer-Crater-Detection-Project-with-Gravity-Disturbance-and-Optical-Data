@@ -36,18 +36,7 @@ import evaluate
 totalsize=1124
 torch.device("cpu")
 folder_path="F:/Academics/OSU/Thesis Documents/Images and Labels/"
-
-
-#Class defined to help interpolate images where there is nodata value stored. 
-def interpolate_pixel(data, mask):
-    for i in range(1, data.shape[0] - 1):
-        for j in range(1, data.shape[1] - 1):
-            if mask[i, j]:
-                neighbors = data[i-1:i+2, j-1:j+2]
-                data[i, j] = np.mean(neighbors[neighbors != -32676])
-        return data
-
-
+#Note: For now, NoData values in the image were turned to 0. 
 #%
 #%Technically this isnt a data loader, but rather a feature extractor? 
 class SegmentationDatasetCreator(data.Dataset):
@@ -61,8 +50,8 @@ class SegmentationDatasetCreator(data.Dataset):
     def __getitem__(self,index):      
         #Prepares images to pass onto pipeline. We only pass training or validation data at a time. 
         #It will open the image and bitmap(label) for each image specified in img_list.
-        data=Image.open(self.img_files[index])
-        label=Image.open(self.mask_files[index])
+        data=rasterio.open(self.img_files[index])
+        label=rasterio.open(self.mask_files[index])
         
         inputs = self.feature_extractor(data, label, return_tensors="pt")
         #A feature extractor can replace the next line
@@ -235,37 +224,6 @@ class SegformerFinetuner(pl.LightningModule):
     
     def test_dataloader(self):
         return self.test_dl
-
-
-
-#The steps that need to be taken to interpolate the images. 
-# Load the image
-#image = Image.open('your_image.png')
-#image_data = np.array(image)
-
-# Identify pixels with the value -32676
-#mask = (image_data == -32676)
-
-#Class defined to help interpolate images where there is nodata value stored. 
-def interpolate_pixel(data, mask):
-    for i in range(1, data.shape[0] - 1):
-        for j in range(1, data.shape[1] - 1):
-            if mask[i, j]:
-                neighbors = data[i-1:i+2, j-1:j+2]
-                data[i, j] = np.mean(neighbors[neighbors != -32676])
-    return data
-
-
-
-
-
-
-
-
-
-
-
-
 
 #%%
 #This block is the first actualpiece of code, it will take the images in my folder_path and seperate them into Training, validation and testing.
