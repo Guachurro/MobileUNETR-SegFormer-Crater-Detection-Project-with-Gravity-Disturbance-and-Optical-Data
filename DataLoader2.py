@@ -31,11 +31,24 @@ import transformers
 from transformers import SegformerImageProcessor, SegformerForSemanticSegmentation
 
 #Hugging Face Datasets
-from datasets import load_metric
+import evaluate
 
-
+totalsize=1124
+torch.device("cpu")
 folder_path="F:/Academics/OSU/Thesis Documents/Images and Labels/"
-#%%
+
+
+#Class defined to help interpolate images where there is nodata value stored. 
+def interpolate_pixel(data, mask):
+    for i in range(1, data.shape[0] - 1):
+        for j in range(1, data.shape[1] - 1):
+            if mask[i, j]:
+                neighbors = data[i-1:i+2, j-1:j+2]
+                data[i, j] = np.mean(neighbors[neighbors != -32676])
+        return data
+
+
+#%
 #%Technically this isnt a data loader, but rather a feature extractor? 
 class SegmentationDatasetCreator(data.Dataset):
     def __init__(self,folder_path,img_list,feature_extractor):
@@ -61,9 +74,11 @@ class SegmentationDatasetCreator(data.Dataset):
     def __len__(self):
         return len(self.img_files)
     
-#%% Defining and fine tuning the model 
-
-class SegformerFinetuner(pl.LightningMoudule):
+    
+    
+#% Defining and fine tuning the model 
+#This is the actual model, as far as I can understand. It has all the instructions on how to handle the data, training, validation, etc. 
+class SegformerFinetuner(pl.LightningModule):
     def __init__(self,id2label,train_dataloader=None,val_dataloader=None,test_dataloader=None, metrics_interval=100):
                  super(SegformerFinetuner, self).__init__()
                  self.id2label=id2label #What identifies which data is meant for training
@@ -83,9 +98,9 @@ class SegformerFinetuner(pl.LightningMoudule):
                                                                              label2id=self.label2id,#Matches mask values to pixels
                                                                              ignore_mismatched_sizes=True,
                                                                              )
-                 self.train_mean_iou = load_metric("mean_iou") #Intersection over union is the metric used to determine how well a [redicted mask matches ground truth data
-                 self.val_mean_iou = load_metric("mean_iou")
-                 self.test_mean_iou = load_metric("mean_iou")
+                 self.train_mean_iou = evaluate.load("mean_iou") #Intersection over union is the metric used to determine how well a [redicted mask matches ground truth data
+                 self.val_mean_iou = evaluate.load("mean_iou")
+                 self.test_mean_iou = evaluate.load("mean_iou")
                  
     def forward(self, images, masks):
         outputs=self.model(pixel_values=images, labels=masks) #Passes Images and masks to model defined in Init
@@ -221,18 +236,50 @@ class SegformerFinetuner(pl.LightningMoudule):
     def test_dataloader(self):
         return self.test_dl
 
-        
+
+
+#The steps that need to be taken to interpolate the images. 
+# Load the image
+#image = Image.open('your_image.png')
+#image_data = np.array(image)
+
+# Identify pixels with the value -32676
+#mask = (image_data == -32676)
+
+#Class defined to help interpolate images where there is nodata value stored. 
+def interpolate_pixel(data, mask):
+    for i in range(1, data.shape[0] - 1):
+        for j in range(1, data.shape[1] - 1):
+            if mask[i, j]:
+                neighbors = data[i-1:i+2, j-1:j+2]
+                data[i, j] = np.mean(neighbors[neighbors != -32676])
+    return data
+
+
+
+
+
+
+
+
+
+
+
+
+
 #%%
-img_files=glob.glob(os.path.join(folder_path,'Image/','*.tif')) 
+#This block is the first actualpiece of code, it will take the images in my folder_path and seperate them into Training, validation and testing.
+#Each run it generates a diffrent set of validation/training but keeps the exact same testing group. 
+img_files=glob.glob(os.path.join(folder_path,'Image','*.tif')) 
 mask_files=[]
 for img_path in img_files: 
-            mask_files.append(os.path.join(folder_path,'Label/',os.path.basename(img_path),'_Label'))
+            mask_files.append(os.path.join(folder_path+'Label/'+os.path.basename(img_path)[:-4]+'_Label.tif'))
 
 #Split the image paths into Train, Validation and test.
 #Take out test data first(Last .10% of dataset)
 size=len(img_files)
 test_img=img_files[size-round(size*.1):] 
-test_mask=img_files[size-round(size*.1):]
+test_mask=mask_files[size-round(size*.1):]
 
 #Remaining images. The masks are acquired within the data loader
 img_files=img_files[:size-round(size*.1)]
@@ -244,15 +291,17 @@ random.shuffle(img_files)
 train_size=round(size*.8)
 
 #Pass one of these two to the dataloader to pass on to pipeline.
-train_img=img_files[:size-train_size]
-val_img=img_files[size-train_size:]
+train_img=img_files[:train_size]
+val_img=img_files[train_size:]
 
-assert (len(test_img)+len(train_img)+len(val_img)==1124)
+assert (len(test_img)+len(train_img)+len(val_img)==totalsize)
+
+
 
 #%% Select feature extractor and instantiate chosen class
-extractor=SegformerImageProcessor(do_reduce_labels=True) #Reduce labels will change any pixel above the defined classes to a default class, such as 0. 
-extractor.reduce_labels='False'
-extractor.size=128 #Size to resize images and their labels
+#Instantiate the predefined class with the feature extractor
+extractor=SegformerImageProcessor(do_resize=True)#Reduce labels will change any pixel above the defined classes to a default class, such as 0. #extractor.do_reduce_labels='False'
+#extractor.size=512 #Size to resize images and their labels
 
 #Run each image batch through the Dataset Creator
 #Passing the images through the feature extractor oto be put into the correct format is what creates the 'Dataset' 
@@ -261,21 +310,30 @@ validation_dataset=SegmentationDatasetCreator(folder_path,val_img,extractor)
 test_dataset=SegmentationDatasetCreator(folder_path,test_img,extractor)
 
 #Number of images at a time
-batch_size=8
+batch_size=10
 train_dataloader=DataLoader(train_dataset,batch_size=batch_size,shuffle=True)
 val_dataloader=DataLoader(validation_dataset,batch_size=batch_size)
 test_dataloader=DataLoader(test_dataset,batch_size=batch_size)
-#%% Instantiate the fine tuned model
+
+
+
+
+#% Instantiate the fine tuned model
+#in this case instantiate means to define it. 
 segformer_finetuner = SegformerFinetuner(
-    train_dataset.id2label, 
+    id2label=train_dataset, 
     train_dataloader=train_dataloader, 
     val_dataloader=val_dataloader, 
     test_dataloader=test_dataloader, 
     metrics_interval=10,
 )
 
-#%% Adding stop based on validation loss to prevent overfitting. Create Pytorch lightning trainer and start training????
 
+
+
+
+#%% Adding stop based on validation loss to prevent overfitting. Create Pytorch lightning trainer and start training????
+#Actual training step? 
 early_stop_callback = EarlyStopping(
     monitor="val_loss", 
     min_delta=0.00, 
