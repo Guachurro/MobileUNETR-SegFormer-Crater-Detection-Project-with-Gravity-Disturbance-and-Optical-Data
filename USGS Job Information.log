@@ -1,0 +1,32 @@
+       U.S. Geological Survey Cloud Processing Services
+                https://astrocloud.wr.usgs.gov
+
+       Processing Provided by ASTROGEOLOGY USGS Flagstaff
+              Contact Information: astroweb@usgs.gov
+
+____________________________________________________________________
+
+JOB INFORMATION
+
+     SERVICE:         MAP2
+     JOB KEY:         e128aebbdd5259d9c1805a8d64bf99af
+     PROCESSING DATE: 2024-10-27 16:16
+     ISIS VERSION:   8.0.2     JOB STATUS:      SUCCESS
+     FILE COUNT:      1
+
+_____________________________________________________________________
+
+PROCESSING INFORMATION
+
+     IMAGE: Lunar_LRO_LROC-WAC_Mosaic_global_100m_June2013
+          PROCESS:  map2map
+               STATUS:     SUCCESS
+               PARAMETERS: {'from_': '/pds_san/PDS_Derived/MAP2/images/Lunar_LRO_LROC-WAC_Mosaic_global_100m_June2013.lbl', 'to': '/scratch/pds_services/workarea/e128aebbdd5259d9c1805a8d64bf99af/Lunar_LRO_LROC-WAC_Mosaic_global_100m_June2013.reproj.cub', 'map': '/scratch/pds_services/workarea/e128aebbdd5259d9c1805a8d64bf99af/e128aebbdd5259d9c1805a8d64bf99af.map', 'matchmap': 'no', 'pixres': 'MAP', 'defaultrange': 'MAP', 'interp': 'bilinear', 'trim': 'YES'}
+               HELP LINK:  https://isis.astrogeology.usgs.gov/Application/presentation/Tabbed/map2map/map2map.html
+
+          PROCESS:  gdal_translate
+               STATUS:     SUCCESS
+               PARAMETERS: {'outputType': 'Float32', 'unscale': True, 'format': 'GTiff', 'creationOptions': ['bigtiff=if_safer'], 'src': '/scratch/pds_services/workarea/e128aebbdd5259d9c1805a8d64bf99af/Lunar_LRO_LROC-WAC_Mosaic_global_100m_June2013.reproj.cub', 'dest': '/scratch/pds_services/workarea/e128aebbdd5259d9c1805a8d64bf99af/Lunar_LRO_LROC-WAC_Mosaic_global_100m_June2013_final.tif'}
+               HELP LINK:  www.gdal.org/gdal_translate.html
+
+END-PROCESSING
