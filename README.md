@@ -30,3 +30,13 @@ NOTE: You are welcome to use different data intended for binary segmentation, bu
 Another important thing of note is that this assumes the Image/label pairs files are all similarly named (e.g. Regional Image Splits contains files with same names, but different data).
 Because I kept my three data types (Gravity/Optical, Gravity and Optical) physically separtate, I didn't give each a name, and this allowed me to train with a different dataset by simply changing the main folder math name. 
 As such, if using different data you just need to make sure that Image and label pairs are named similarly, wth an appended '_label' to differentiate (e.g.  'example1_tif' and 'example1_label.tif')
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Folder structure used in this work. Each Dataset was differentiated by a number, and inside it contained 5 main folders. 3 for the Training, Validation and Test regions, and 2 to store training infomation from MopbileUNETR and SegFormer.
+![Folder Structure Used in this work](https://github.com/user-attachments/assets/974ae385-ce68-49d8-a570-4c1c9e8e6982)
+
+
+Regional Image and Label showing the Training, Validation and Test areas
+![Training regions Optical and Label_Annotated](https://github.com/user-attachments/assets/6e4f0770-54dd-4fbf-a79b-0b82f9fcd419)
+
+
