@@ -26,6 +26,10 @@ This will serve as the instruction to use the codes provided in this repository.
 10) SegFormer_Framework.py
       - Pytorch Lightning implementation of SegFormer model for binary segmentation.
       - Should not require any manual work. It will access the model and pretrained weights from Huggingfgace.
+11) Hector J. Cotto Ortiz (2025) Exploring Automated Lunar Crater detection Using Gravity and Optical Data Modalities with Lightweight Segmentation Models.pdf
+      - Thesis developed with the results of this work
+12) Tnsorboard Results.7z
+      - Zipped file containing tensorboard results of every iteration across each Dataset. It contains a folder for each data type, and each further contains a folder for MobileUNETR and SegFormer results. 
 
 NOTE: You are welcome to use different data intended for binary segmentation, but if you do, follow the folder structure established in the repository (Or manually change the paths in the code).
 Another important thing of note is that this assumes the Image/label pairs files are all similarly named (e.g. Regional Image Splits contains files with same names, but different data).
