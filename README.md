@@ -1,4 +1,4 @@
-This will serve as the instruction to use the codes provided in this repository. This is intended to test the data located within it, the contents are as follows: 
+The contents of this repository are as follows: 
 1) 10to200_10E_0N_180by70_Area_660_Label.tif
       - Regional label dpicting craters between 12km to 200km in diameter
       - Not split into Training/Validation/Testing. There is a separate zip file for this.
@@ -43,5 +43,20 @@ Folder structure used in this work. Each Dataset was differentiated by a number,
 
 Regional Image and Label showing the Training, Validation and Test areas
 ![Training regions Optical and Label_Annotated](https://github.com/user-attachments/assets/6e4f0770-54dd-4fbf-a79b-0b82f9fcd419)
-
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Instructions to use: 
+1) Create a folder structure as shown for however many datasets you wish to use. In this repository there are 3.
+      - For example, you create a folder named Optical Dataset, inside it you will have
+              - A Training, Validation and Test folder containing the corresponding portion of the image and label. These are found in Regional Image Splits. Every dataset uses the same label.
+              - You will also have a folder for MobileUNETR results, and another for SegFormer results. If you only want to use one model, then you only need one folder.
+              - If you want to use your own data, that's okay but it should still be separated into Training, Validation and Test folders.
+2) Use the Overlap Image Splitter code
+      - This code takes an image and performs the following:
+              - Split the image into overlapping chunks. You select the overlap percentage as well as the chunk size.
+              - Perform image augmentation. There are three preset augmentations, and they're explained within the code.
+              - It will name each image and label with the same name, appending the label with '_label' to easily find each counterpart. 
+      - Note: This code is hardcoded to use a Training, Validaton and Test image portion. You can comment out whatever you need.
+      - Note 2: If your data is already split into image/label pairs you can SKIP THIS STEP.
+3) Open MobileUNETR Framework or SegFormer Framework and alter the data paths to correspond to your data. I've tried to make the data paths into variables so you only need to change one. I am going to work on making it so you can choose your own paths at a later time.
+4) Provided there isn't something I forgot to tell you, it should work. Please let me know if you encounter problems. A lot of this eas manually set up for my personal work, but since I made it this far I thought I'd make it availabel to use. I will be updating the codes to work more seamlessly with other users and avoid so much manual labor. Unfortunately, unless Im abe to host the prepared dataset there will still be a need to split them yourself in the meantime. That said, I encourage you to try other datasets you may have as long as they're meant for two classes. 
 
