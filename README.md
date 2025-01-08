@@ -1,3 +1,5 @@
+NOTE: The code used in this repository was coded to work in my personal computer. I include instructions on how to use it, but there are fodler paths you will need to change. I am working to update the code to work with any user. 
+
 The contents of this repository are as follows: 
 1) 10to200_10E_0N_180by70_Area_660_Label.tif
       - Regional label dpicting craters between 12km to 200km in diameter
